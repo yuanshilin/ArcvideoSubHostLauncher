@@ -1,34 +1,40 @@
 package com.arcvideo.arcvideosubhostlauncher;
 
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
+import androidx.annotation.NonNull;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
-import android.content.BroadcastReceiver;
-import android.content.Context;
+import android.app.Activity;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.pm.PackageManager;
-import android.content.pm.ResolveInfo;
+import android.graphics.PixelFormat;
+import android.graphics.Point;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.Settings;
 import android.util.Log;
+import android.view.Gravity;
+import android.view.SurfaceView;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import com.arcvideo.arcvideosubhostlauncher.apprecycle.AppListManager;
+import com.arcvideo.arcvideosubhostlauncher.util.AppUtil;
+import com.arcvideo.arcvideosubhostlauncher.wallpaperimage.WPIManager;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends Activity {
     public static final String TAG = "SubHostCarLauncher";
-    private static final boolean DEBUG = true;
-    private AppRecycleViewAdapter appRecycleViewAdapter;
-    private List<String> acrvideo_app;
-    private List<AppInfo> appInfos = new ArrayList<>();
-    private RecyclerView recyclerView;
-    private AppBehaviorReceive appBehaviorReceive = null;
+    private static final boolean DEBUG = AppUtil.DEBUG;
+    private final int REQUESTSTORAGECODE = 1024;
+    private final int REQUESTOVERLAYCODE = 1025;
+    private View recyclerView = null;
+    WindowManager.LayoutParams params;
+    private SurfaceView surfaceView;
+    private WPIManager wpiManager;
+    private AppListManager appListManager;
     private void setWindowFlag(){
         Window window = getWindow();
         View decorView = window.getDecorView();
@@ -60,107 +66,172 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        setWindowFlag();
+
+        // 隐藏导航栏和状态栏
+        if (getPackageManager().hasSystemFeature(PackageManager.FEATURE_AUTOMOTIVE)){
+            setWindowFlag();
+        }
 
         initview();
-        initdata();
-        registerAppBehavior();
+        checkPermission();
     }
 
     private void initview(){
-        recyclerView = findViewById(R.id.applist);
+        surfaceView = findViewById(R.id.main_background);
     }
 
     private void initdata(){
-        appInfos = loadArcVideoApp();
-        appRecycleViewAdapter = new AppRecycleViewAdapter(appInfos);
-        appRecycleViewAdapter.setOnItemListener(new AppRecycleViewAdapter.OnItemClickListener() {
-            @Override
-            public void onClick(int position) {
-                startActivity(new Intent(appInfos.get(position).getLaunchIntent()));
-            }
-        });
-        LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
-        linearLayoutManager.setOrientation(LinearLayoutManager.HORIZONTAL);
-        recyclerView.setLayoutManager(linearLayoutManager);
-        recyclerView.setAdapter(appRecycleViewAdapter);
-        appRecycleViewAdapter.notifyDataSetChanged();
+        initBackGround();
+        initAppList();
     }
 
-    private List<AppInfo> loadArcVideoApp(){
-        acrvideo_app = Arrays.asList(getResources().getStringArray(R.array.acrvideo_app));
-        if (DEBUG) {
-            Log.d(TAG, "initdata: display app list is "+acrvideo_app.toString());
-        }
-        List<AppInfo> list = new ArrayList<>();
-        Intent mainIntent = new Intent(Intent.ACTION_MAIN);
-        mainIntent.addCategory(Intent.CATEGORY_LAUNCHER);
-        PackageManager packageManager = getPackageManager();
-        List<ResolveInfo> apps = packageManager.queryIntentActivities(mainIntent,
-                PackageManager.GET_META_DATA);
-        for (ResolveInfo app: apps){
-            Log.d(TAG, "loadArcVideoApp: package name is "+String.valueOf(app.activityInfo.loadLabel(packageManager)));
-            if (app.activityInfo.packageName.equals(getPackageName())){
-                continue;
-            }
-            String label = String.valueOf(app.activityInfo.loadLabel(packageManager));
-            if (!acrvideo_app.contains(label)){
-                continue;
-            }
-            list.add(new AppInfo(app, packageManager));
-        }
-        return list;
+    private void initBackGround(){
+        wpiManager = new WPIManager(this);
+        Point sizePoint = new Point();
+        getWindow().getWindowManager().getDefaultDisplay().getRealSize(sizePoint);
+//        wpiManager.setPreference(sizePoint.x, sizePoint.y,
+//                (sizePoint.x>1920)?R.drawable.arcvideo_host: R.drawable.arcvideo_host_1920x1080);
+        wpiManager.setPreference(sizePoint.x, sizePoint.y, R.drawable.arcvideo_host_1920x1080);
+        wpiManager.showWallPaperImage(surfaceView.getHolder());
     }
 
-    private void registerAppBehavior(){
-        appBehaviorReceive = new AppBehaviorReceive();
-        IntentFilter intentFilter = new IntentFilter();
-        // 安卓8.0之后必须动态注册监听系统卸载应用广播才能生效
-        intentFilter.addDataScheme("package");
-        intentFilter.addAction(Intent.ACTION_PACKAGE_ADDED);//安装app
-        intentFilter.addAction(Intent.ACTION_PACKAGE_REMOVED);//卸载app
-        this.registerReceiver(appBehaviorReceive, intentFilter);
+    private void initAppList(){
+        appListManager = new AppListManager(this);
+        recyclerView = appListManager.getListView();
+        params = new WindowManager.LayoutParams();
+        params.setTitle("app_recycle_list");
+        int flag = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE |
+                WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH |
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS;
+        params.type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
+        params.flags = flag;
+        params.format = PixelFormat.RGBA_8888; /*透明背景,否则会黑色*/
+        params.width = WindowManager.LayoutParams.MATCH_PARENT;
+        params.height = WindowManager.LayoutParams.WRAP_CONTENT;
+        params.gravity = Gravity.CENTER | Gravity.BOTTOM;
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        getWindowManager().addView(recyclerView, params);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        getWindowManager().removeView(recyclerView);
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (appBehaviorReceive != null) {
-            unregisterReceiver(appBehaviorReceive);
-        }
-    }
-
-    private class AppBehaviorReceive extends BroadcastReceiver {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            String packageName = intent.getData().getSchemeSpecificPart();
-            String action = intent.getAction();
-            if (DEBUG) Log.d(TAG, "onReceive: boardcast action is "+action+",package name is "+packageName);
-            switch(action){
-                case Intent.ACTION_PACKAGE_REMOVED:
-                    for (AppInfo app: appInfos) {
-                        if(app.getLaunchIntent().getComponent().getPackageName().equals(packageName)){
-                            if (DEBUG) Log.d(TAG, "onReceive: ready to remove "+packageName+" from list.");
-                            appInfos.remove(app);
-                            appRecycleViewAdapter.notifyDataSetChanged();
-                            break;
-                        }
-                    }
-                    break;
-                case Intent.ACTION_PACKAGE_ADDED:
-                    List<AppInfo> templist = loadArcVideoApp();
-                    if (templist.size() != appInfos.size()) {
-                        if (DEBUG) Log.d(TAG, "onReceive: ready to add "+packageName+" to list.");
-                        appInfos.clear();
-                        appInfos.addAll(templist);
-                        appRecycleViewAdapter.notifyDataSetChanged();
-                    }
-                    break;
-            }
-        }
+        appListManager.destroy();
     }
 
     @Override
     public void onBackPressed() {
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (grantResults.length == 0){
+            if (DEBUG) Log.d(TAG, "onRequestPermissionsResult: permission grant failed.");
+            return;
+        }
+        switch (requestCode){
+            case REQUESTSTORAGECODE:
+                if (grantResults[0] == PackageManager.PERMISSION_GRANTED){
+                    if (DEBUG) {
+                        Log.d(TAG, "onRequestPermissionsResult: storage permission is granted. read to check overlay permission.");
+                    }
+                    if (!Settings.canDrawOverlays(this)){
+                        requestOverlaysPermission();
+                    }else{
+                        Log.d(TAG, "onRequestPermissionsResult: overlay permission is granted. read to init data.");
+                        initdata();
+                    }
+                }else {
+                    if (DEBUG) {
+                        Log.d(TAG, "onRequestPermissionsResult: storage permission is not granted.");
+                    }
+                    finish();
+                }
+                break;
+            case REQUESTOVERLAYCODE:
+                if (grantResults[0] == PackageManager.PERMISSION_GRANTED){
+                    if (DEBUG) {
+                        Log.d(TAG, "onRequestPermissionsResult: overlay permission is granted. read to init data.");
+                    }
+                    initdata();
+                }else {
+                    if (DEBUG) {
+                        Log.d(TAG, "onRequestPermissionsResult: overlay permission is not granted.");
+                    }
+                    finish();
+                }
+                break;
+        }
+    }
+
+    private void checkPermission(){
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // 先判断有没有权限
+            if (!Environment.isExternalStorageManager()) {
+                requestStoragePermission();
+            } else if (!Settings.canDrawOverlays(this)){
+                requestOverlaysPermission();
+            } else {
+                //已经授予了读写外置存储权限，可以直接进行读写文件操作
+                initdata();
+            }
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            // 先判断有没有权限
+            if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED ||
+                    ActivityCompat.checkSelfPermission(this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                requestStoragePermission();
+            } else if (!Settings.canDrawOverlays(this)){
+                requestOverlaysPermission();
+            } else {
+                initdata();
+            }
+        } else {
+            //已经授予了读写外置存储权限，可以直接进行读写文件操作
+            initdata();
+        }
+    }
+
+    private void requestStoragePermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // 先判断有没有权限
+            if (Environment.isExternalStorageManager()) {
+                //已经授予了读写外置存储权限，可以直接进行读写文件操作
+            } else {
+                Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+                intent.setData(Uri.parse("package:" + this.getPackageName()));
+                startActivityForResult(intent, REQUESTSTORAGECODE);
+            }
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            // 先判断有没有权限
+            if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED &&
+                    ContextCompat.checkSelfPermission(this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
+                //已经授予了读写外置存储权限，可以直接进行读写文件操作
+            } else {
+                ActivityCompat.requestPermissions(
+                        this,
+                        new String[]{
+                                android.Manifest.permission.READ_EXTERNAL_STORAGE,
+                                android.Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                        REQUESTSTORAGECODE);
+            }
+        } else {
+            //已经授予了读写外置存储权限，可以直接进行读写文件操作
+        }
+    }
+    private void requestOverlaysPermission() {
+        Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivityForResult(intent, REQUESTOVERLAYCODE);
     }
 }

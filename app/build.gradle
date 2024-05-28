@@ -12,15 +12,16 @@ android {
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-        signingConfig signingConfigs.debug
+//        signingConfig signingConfigs.debug
     }
     signingConfigs {
-        debug {
-            storeFile file('.\\sign\\firefly.jks')
-            storePassword '123456'
-            keyAlias 'arcvideo'
-            keyPassword '123456'
-        }
+//        debug {
+//            storeFile file('.\\sign\\platform.jks')
+////            storeFile file('.\\sign\\firefly.jks')
+//            storePassword '123456'
+//            keyAlias 'arcvideo'
+//            keyPassword '123456'
+//        }
     }
 
     buildTypes {

@@ -1,4 +1,4 @@
-package com.arcvideo.arcvideosubhostlauncher;
+package com.arcvideo.arcvideosubhostlauncher.bean;
 
 import android.content.ComponentName;
 import android.content.Intent;
@@ -10,7 +10,7 @@ public class AppInfo {
     private Drawable mIcon;
     private String mLable;
     private Intent mLaunchIntent;
-    AppInfo(ResolveInfo info, PackageManager packageManager) {
+    public AppInfo(ResolveInfo info, PackageManager packageManager) {
         mIcon = info.loadIcon(packageManager);
         mLable = String.valueOf(info.loadLabel(packageManager));
         mLaunchIntent = new Intent();
@@ -18,7 +18,7 @@ public class AppInfo {
                 info.activityInfo.name));
     }
 
-    Drawable getIcon() {
+    public Drawable getIcon() {
         return mIcon;
     }
 
@@ -26,11 +26,11 @@ public class AppInfo {
         return mLable;
     }
 
-    Intent getLaunchIntent() {
+    public Intent getLaunchIntent() {
         return mLaunchIntent;
     }
 
-    ComponentName getComponentName() {
+    public ComponentName getComponentName() {
         return mLaunchIntent.getComponent();
     }
 }

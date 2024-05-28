@@ -1,4 +1,4 @@
-package com.arcvideo.arcvideosubhostlauncher;
+package com.arcvideo.arcvideosubhostlauncher.apprecycle;
 
 import android.view.View;
 import android.view.ViewGroup;
@@ -7,6 +7,9 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.arcvideo.arcvideosubhostlauncher.R;
+import com.arcvideo.arcvideosubhostlauncher.bean.AppInfo;
 
 import java.util.List;
 
