@@ -5,9 +5,11 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import android.app.Activity;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
-import android.graphics.PixelFormat;
 import android.graphics.Point;
 import android.net.Uri;
 import android.os.Build;
@@ -15,26 +17,30 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.provider.Settings;
 import android.util.Log;
-import android.view.Gravity;
-import android.view.SurfaceView;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 
-import com.arcvideo.arcvideosubhostlauncher.apprecycle.AppListManager;
+import com.arcvideo.arcvideosubhostlauncher.bean.MagicInfo;
+import com.arcvideo.arcvideosubhostlauncher.wallpaper.impl.AppListViewManager;
 import com.arcvideo.arcvideosubhostlauncher.util.AppUtil;
-import com.arcvideo.arcvideosubhostlauncher.wallpaperimage.WPIManager;
+import com.arcvideo.arcvideosubhostlauncher.util.MagicUtil;
+import com.arcvideo.arcvideosubhostlauncher.wallpaper.impl.WPCompressManager;
+import com.arcvideo.arcvideosubhostlauncher.wallpaper.impl.WPImageManager;
+import com.arcvideo.arcvideosubhostlauncher.wallpaper.impl.WPVideoManager;
 
 public class MainActivity extends Activity {
     public static final String TAG = "SubHostCarLauncher";
     private static final boolean DEBUG = AppUtil.DEBUG;
     private final int REQUESTSTORAGECODE = 1024;
     private final int REQUESTOVERLAYCODE = 1025;
-    private View recyclerView = null;
-    WindowManager.LayoutParams params;
-    private SurfaceView surfaceView;
-    private WPIManager wpiManager;
-    private AppListManager appListManager;
+    private WPVideoManager wpVideoManager = null;
+    private WPImageManager wpImageManager = null;
+    private WPCompressManager wpCompressManager = null;
+    private AppListViewManager appListManager = null;
+    private ArcViewManager arcViewManager = null;
+    private RefreshReceiver receiver = null;
+    private boolean onresume = false;
     private void setWindowFlag(){
         Window window = getWindow();
         View decorView = window.getDecorView();
@@ -72,61 +78,91 @@ public class MainActivity extends Activity {
             setWindowFlag();
         }
 
-        initview();
         checkPermission();
+        registerRefreshReceiver();
     }
-
-    private void initview(){
-        surfaceView = findViewById(R.id.main_background);
+    private void registerRefreshReceiver(){
+        receiver = new RefreshReceiver();
+        IntentFilter intentFilter = new IntentFilter(AppUtil.UPDATE_WALLPAPER_BROADCAST);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            registerReceiver(receiver, intentFilter, RECEIVER_EXPORTED);
+        }else{
+            registerReceiver(receiver, intentFilter);
+        }
     }
 
     private void initdata(){
-        initBackGround();
+        arcViewManager = new ArcViewManager(this);
+        displayViews();
+    }
+
+    private void displayViews() {
+        initBackGroundSurface();
         initAppList();
     }
 
-    private void initBackGround(){
-        wpiManager = new WPIManager(this);
-        Point sizePoint = new Point();
-        getWindow().getWindowManager().getDefaultDisplay().getRealSize(sizePoint);
-//        wpiManager.setPreference(sizePoint.x, sizePoint.y,
-//                (sizePoint.x>1920)?R.drawable.arcvideo_host: R.drawable.arcvideo_host_1920x1080);
-        wpiManager.setPreference(sizePoint.x, sizePoint.y, R.drawable.arcvideo_host_1920x1080);
-        wpiManager.showWallPaperImage(surfaceView.getHolder());
+    private void initBackGroundSurface(){
+        String filepath = AppUtil.Table_preImgPath;
+        if (getPackageManager().hasSystemFeature(PackageManager.FEATURE_AUTOMOTIVE)){
+            filepath = AppUtil.Auto_preWallpaper;
+        }
+        int type = MagicUtil.getFileType(filepath);
+        if (DEBUG) Log.d(TAG, "initBackGroundSurface: file type is "+ MagicInfo.getTypeInfo(type));
+        switch (type) {
+            case MagicInfo.VIDEO_TYPE:
+                wpVideoManager = new WPVideoManager(this);
+                wpVideoManager.setWallPaperVideo(filepath);
+                arcViewManager.addview(wpVideoManager);
+                break;
+            case MagicInfo.IMAGE_TYPE:
+                wpImageManager = new WPImageManager(this);
+                wpImageManager.setWallPaperImage(filepath);
+                arcViewManager.addview(wpImageManager);
+                break;
+            case MagicInfo.COMPRESS_TYPE:
+                wpCompressManager = new WPCompressManager(this);
+                wpCompressManager.setWallPaperAnimation(filepath);
+                arcViewManager.addview(wpCompressManager);
+                break;
+            default:
+                wpImageManager = new WPImageManager(this);
+                Point sizePoint = new Point();
+                getWindow().getWindowManager().getDefaultDisplay().getRealSize(sizePoint);
+                if (sizePoint.x==3048 && sizePoint.y==2032){
+                    wpImageManager.setWallPaperImage(R.drawable.arcvideo_host_xiaomi);
+                }else{
+                    wpImageManager.setWallPaperImage(R.drawable.arcvideo_host);
+                }
+                arcViewManager.addview(wpImageManager);
+        }
     }
 
     private void initAppList(){
-        appListManager = new AppListManager(this);
-        recyclerView = appListManager.getListView();
-        params = new WindowManager.LayoutParams();
-        params.setTitle("app_recycle_list");
-        int flag = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE |
-                WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH |
-                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS;
-        params.type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
-        params.flags = flag;
-        params.format = PixelFormat.RGBA_8888; /*透明背景,否则会黑色*/
-        params.width = WindowManager.LayoutParams.MATCH_PARENT;
-        params.height = WindowManager.LayoutParams.WRAP_CONTENT;
-        params.gravity = Gravity.CENTER | Gravity.BOTTOM;
+        appListManager = new AppListViewManager(this);
+        arcViewManager.addview(appListManager);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        getWindowManager().addView(recyclerView, params);
+        setOnresume(true);
+        arcViewManager.showViews();
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        getWindowManager().removeView(recyclerView);
+        setOnresume(false);
+        arcViewManager.hideViews();
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        appListManager.destroy();
+        arcViewManager.destroy();
+        if (receiver != null) {
+            unregisterReceiver(receiver);
+        }
     }
 
     @Override
@@ -233,5 +269,32 @@ public class MainActivity extends Activity {
         Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivityForResult(intent, REQUESTOVERLAYCODE);
+    }
+
+    private void resetWallPaper(){
+        if (isOnresume()){
+            arcViewManager.hideViews();
+        }
+        arcViewManager.destroy();
+        displayViews();
+        if (isOnresume()) {
+            arcViewManager.showViews();
+        }
+    }
+
+    private class RefreshReceiver extends BroadcastReceiver{
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (DEBUG) Log.d(TAG, "onReceive: read to reset wallpaper.");
+            resetWallPaper();
+        }
+    }
+
+    public boolean isOnresume() {
+        return onresume;
+    }
+
+    public void setOnresume(boolean onresume) {
+        this.onresume = onresume;
     }
 }

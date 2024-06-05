@@ -4,6 +4,7 @@ public class MagicInfo {
     public static final int UNKNOW_TYPE = 100;
     public static final int VIDEO_TYPE = 101;
     public static final int IMAGE_TYPE = 102;
+    public static final int COMPRESS_TYPE = 103;
     private String format;
     private int type;
 
@@ -26,6 +27,8 @@ public class MagicInfo {
                 return "VIDEO_TYPE";
             case IMAGE_TYPE:
                 return "IMAGE_TYPE";
+            case COMPRESS_TYPE:
+                return "COMPRESS_TYPE";
             default:
                 return "UNKNOW_TYPE";
         }
