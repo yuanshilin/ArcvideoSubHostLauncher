@@ -1,4 +1,4 @@
-package com.arcvideo.arcvideosubhostlauncher.apprecycle;
+package com.arcvideo.arcvideosubhostlauncher.adapter;
 
 import android.view.View;
 import android.view.ViewGroup;

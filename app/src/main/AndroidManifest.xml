@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    package="com.arcvideo.arcvideosubhostlauncher">
-<!--    android:sharedUserId="android.uid.system">-->
+    package="com.arcvideo.arcvideosubhostlauncher"
+    android:sharedUserId="android.uid.system">
 
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
@@ -21,7 +21,8 @@
         android:theme="@style/Theme.AppCompat.NoActionBar">
         <activity android:name="com.arcvideo.arcvideosubhostlauncher.MainActivity"
             android:enabled="true"
-            android:exported="true">
+            android:exported="true"
+            android:screenOrientation="userLandscape">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.HOME" />
