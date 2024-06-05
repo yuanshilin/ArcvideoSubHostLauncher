@@ -1,16 +1,3 @@
 <resources>
     <string name="app_name">当虹启动器</string>
-
-    <string-array name="acrvideo_app">
-        <item>3D车模</item>
-        <item>驾驶可视化</item>
-        <item>赛道模式</item>
-        <item>超级马力欧</item>
-        <item>流浪地球Ⅱ</item>
-        <item>爱奇艺</item>
-        <item>爱奇艺多屏版</item>
-        <item>设置</item>
-        <item>闪电浏览器</item>
-        <item>HMI demo</item>
-    </string-array>
 </resources>

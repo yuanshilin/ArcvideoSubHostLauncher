@@ -21,7 +21,8 @@
         android:theme="@style/Theme.AppCompat.NoActionBar">
         <activity android:name="com.arcvideo.arcvideosubhostlauncher.MainActivity"
             android:enabled="true"
-            android:exported="true">
+            android:exported="true"
+            android:screenOrientation="userLandscape">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.HOME" />

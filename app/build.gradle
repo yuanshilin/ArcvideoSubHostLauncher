@@ -14,7 +14,7 @@ android {
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 //        signingConfig signingConfigs.debug
     }
-    signingConfigs {
+//    signingConfigs {
 //        debug {
 //            storeFile file('.\\sign\\platform.jks')
 ////            storeFile file('.\\sign\\firefly.jks')
@@ -22,7 +22,7 @@ android {
 //            keyAlias 'arcvideo'
 //            keyPassword '123456'
 //        }
-    }
+//    }
 
     buildTypes {
         release {
