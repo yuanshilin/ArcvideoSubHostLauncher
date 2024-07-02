@@ -102,7 +102,7 @@ public class MagicUtil {
         fileTypeMap.put("504b0304140000000800", new MagicInfo("zip", MagicInfo.COMPRESS_TYPE)); // zip 标准压缩文件
         fileTypeMap.put("526172211a0700cf9073", new MagicInfo("rar", MagicInfo.COMPRESS_TYPE)); // rar 文件或 zip 存储压缩文件
         fileTypeMap.put("504b03040a0000000000", new MagicInfo("jar", MagicInfo.COMPRESS_TYPE)); //jar 压缩
-        fileTypeMap.put("1f8b0800000000000000", new MagicInfo("gz", MagicInfo.COMPRESS_TYPE));//gz文件
+//        fileTypeMap.put("1f8b0800000000000000", new MagicInfo("gz", MagicInfo.COMPRESS_TYPE));//gz文件
         fileTypeMap.put("null", new MagicInfo("null", MagicInfo.UNKNOW_TYPE)); // null
     }
 }
