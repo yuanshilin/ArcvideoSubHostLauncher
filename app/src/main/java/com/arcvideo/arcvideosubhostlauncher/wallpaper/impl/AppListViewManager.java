@@ -57,7 +57,9 @@ public class AppListViewManager implements WallPaperImpl {
         appRecycleViewAdapter.setOnItemListener(new AppRecycleViewAdapter.OnItemClickListener() {
             @Override
             public void onClick(int position) {
-                mContext.startActivity(new Intent(appInfos.get(position).getLaunchIntent()));
+                Intent intent = new Intent(appInfos.get(position).getLaunchIntent());
+                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                mContext.startActivity(intent);
             }
         });
         LinearLayoutManager linearLayoutManager = new LinearLayoutManager(mContext);
